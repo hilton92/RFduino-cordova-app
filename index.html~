@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, user-scalable=no
+		initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
+
+	<title>BYU BABEL FETAL MONITOR</title>
+
+	<style>
+		@import 'ui/css/evothings-app.css';
+	</style>
+
+	<style>
+	div {
+		margin: 10px 0px;
+	}
+	button {
+		margin: 5px 0px;
+	}
+	.lead {
+		font-weight: bold;
+	}
+	</style>
+
+	<script>
+	// Redirect console.log to Evothings Workbench.
+	if (window.hyper && window.hyper.log) { console.log = hyper.log }
+	</script>
+	<script src="cordova.js"></script>
+	<script src="libs/jquery/jquery.js"></script>
+	<script src="libs/evothings/evothings.js"></script>
+	<script src="libs/evothings/rfduinoble/rfduinoble.js"></script>
+
+</head>
+
+<body>
+
+	<header>
+		<button class="back" onclick="history.back()">
+			<img src="ui/images/arrow-left.svg" />
+		</button>
+
+		
+
+		<img class="logotype" src="ui/images/logo.svg" alt="Evothings" />
+
+		<!--<button class="menu" onclick=""><img src="ui/images/menu.svg" /></button>-->
+	</header>
+
+	<h1>RFDuino BYU Nanocomposites App w/ SD card</h1>
+
+	<p id="info" class="lead">Initializing...</p>
+
+	<canvas id="canvas" width="300" height="150"></canvas
+	<br />
+	
+
+	<button id="connect" type="button" class="blue" onclick="app.connect()">
+		Connect
+	</button>
+	<button id="disconnect" type="button" class="yellow" onclick="app.disconnect()">
+		Disconnect
+	<button id="beginRecording" type="button" class="green" onclick="app.beginRecording()">
+		Begin Recording
+	</button>
+
+	<button id="stopRecording" type="button" class="red" onclick="app.stopRecording()">
+		Stop Recording
+	</button>
+
+	<br />
+	
+
+	<!-- TODO: Image is missing.
+	<p><img src="RFduino_Image.png" style="max-height:30%;" /></p>
+	-->
+
+	<!-- JavaScript code for the app -->
+
+	<script>
+	// Short name for RFduino BLE library.
+
+	$("#disconnect").hide();
+	$("#readcounter").hide();
+	$("#connect").hide();
+	$("#displayValues").hide();
+	$("#beginRecording").hide();
+	$("#stopRecording").hide();
+	
+	
+
+	var rfduinoble = evothings.rfduinoble;
+
+	// Application object.
+	var app = {};
+
+	// Connected device.
+	app.device = null;
+	//data that is plotted
+	app.dataPoints = [];
+
+	
+	//this is the function that displays info to the screen
+	app.showMessage = function(info)
+	{
+		document.getElementById("info").innerHTML = info;
+	};
+
+	
+
+	// Called when BLE and other native functions are available.
+	app.onDeviceReady = function()
+	{
+		app.showMessage('Press the blue button to connect');
+		$("#connect").show();
+	};
+
+	//when the button is hit to start recording, publish a '1' to the rfduino
+	app.beginRecording = function()
+	{
+		//var temp_array = app.getTime(); //the problem is here!!
+		
+		var d = new Date();
+		var month = d.getMonth() + 1;//temp_array[1];
+		var day = d.getDate();//temp_array[2];
+		var hours = d.getHours();//temp_array[3];
+		var minutes = d.getMinutes();//temp_array[4];
+		var seconds = d.getSeconds();//temp_array[5];
+		var x = new Uint8Array(6);
+		x[0] = 7;
+		x[1] = month;
+		x[2] = day;
+		x[3] = hours;
+		x[4] = minutes;
+		x[5] = seconds;
+		app.device && app.device.writeDataArray(new Uint8Array(x));
+		
+
+	};
+
+	//when the button is hit to stop recording, publish a '0' to the rfduino
+	app.stopRecording = function()
+	{
+		app.device && app.device.writeDataArray(new Uint8Array([9]));
+	};
+
+
+	//this function resets the canvas 'screen' if the app is run on a larger screen
+	/*app.respondCanvas = function()
+	{
+		var canvas = $('#canvas')
+		var container = $(canvas).parent()
+		canvas.attr('width', $(container).width() ) // Max width
+		// Not used: canvas.attr('height', $(container).height() ) // Max height
+	};*/
+
+	//this function manages the details of the connection
+	app.connect = function()
+	{
+		//console.log("close");
+		rfduinoble.close();
+
+		// Wait 500 ms for close to complete before connecting.
+		setTimeout(function()
+		{
+			//console.log("connecting");
+			app.showMessage("Connecting...");
+			rfduinoble.connect(
+				"RFduino",
+				function(device)
+				{
+					//console.log("connected");
+					app.showMessage("Connected");
+					app.device = device;
+					//app.respondCanvas();
+					$("#connect").hide();
+					$("#disconnect").show();
+					$("#beginRecording").show();
+					$("#stopRecording").show();
+
+				},
+				function(errorCode)
+				{
+					app.showMessage("Connect error: " + errorCode);
+				});
+			},
+			500);
+	};
+
+
+
+	
+	app.disconnect = function() 
+	{
+		rfduinoble.close();
+		app.showMessage('Closed');
+		$("#disconnect").hide();
+		$("#displayValues").hide();
+		$("#calibrate").hide();
+		$("#connect").show();
+	};
+
+
+	//this function will get the current time to send to the RFduino for saving the file
+	
+	/*app.getTime = function(){
+		//var d = new Date();
+		//markIn = d.getTime();
+				var temp_array = app.getTime();
+				var month = temp_array[1];
+				var day = temp_array[2];
+				var hours = temp_array[3];
+				var minutes = temp_array[4];
+				var seconds = temp_array[5];
+				var x = new int(6);
+				x[0] = 3;
+				x[1] = month;
+				x[2] = day;
+				x[3] = hours;
+				x[4] = minutes;
+				x[5] = seconds;
+				app.device.writeDataArray(x);
+	};*/
+
+	
+	
+	setInterval(app.readCount = function()
+	{
+		var bitNumber = 0;		app.device.readCharacteristic(
+			'00002221-0000-1000-8000-00805f9b34fb',
+			function(data){
+				bitNumber = [new DataView(data).getUint16(0, true)];
+				app.showMessage(bitNumber); //publish the value to the screen
+				app.drawDiagram(bitNumber); //publish the value to the plot
+				
+			},
+			
+			function(errorCode)
+			{
+				app.showMessage("Read error: " + errorCode);
+			}
+		);
+	}, 250); //on this line is the refresh rate (in ms)
+
+
+	app.drawDiagram = function(values){
+	
+		var canvas = document.getElementById('canvas');
+		var context = canvas.getContext('2d');
+
+		// Add recent values.
+		app.dataPoints.push(values);
+
+		// Remove data points that do not fit the canvas.
+		if (app.dataPoints.length > canvas.width)
+		{
+			app.dataPoints.splice(0, (app.dataPoints.length - canvas.width));
+		}
+
+		// Value is an bit reading between 0 and 1024.
+		function calcDiagramY(value)
+		{
+			// Return Y coordinate for this value.
+			foo = (1024 / canvas.height);
+			var diagramY = value / foo;
+			return diagramY;
+		}
+
+		function drawLine(axis, color)
+		{
+			context.strokeStyle = color;
+			context.beginPath();
+			var lastDiagramY = calcDiagramY(
+				app.dataPoints[app.dataPoints.length-1][axis]);
+			context.moveTo(0, lastDiagramY);
+			var x = 1;
+			for (var i = app.dataPoints.length - 2; i >= 0; i--)
+			{
+				var y = calcDiagramY(app.dataPoints[i][axis]);
+				context.lineTo(x, y);
+				x++;
+			}
+			context.stroke();
+		}
+
+		// Clear background.
+		context.clearRect(0, 0, canvas.width, canvas.height);
+
+		// Draw lines.
+		drawLine('x', '#f00');
+		drawLine('y', '#0f0');
+		drawLine('z', '#00f');
+	};
+
+
+	// When the app is fully loaded the "deviceready" event is triggered.
+	document.addEventListener("deviceready", app.onDeviceReady, false);
+	</script>
+</body>
+</html>
